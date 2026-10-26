@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>منچ دونفره</title>
+<style>
+body{font-family:tahoma,sans-serif;text-align:center;margin:0;padding:12px;background:#222;color:#eee}
+input,button{font-size:18px;padding:8px 14px;margin:4px;border-radius:8px;border:0}
+button{background:#fc3;cursor:pointer}button:disabled{opacity:.4}
+#board{display:grid;grid-template-columns:repeat(11,1fr);width:min(95vw,480px);aspect-ratio:1;margin:10px auto;direction:ltr;gap:1px}
+.c{display:flex;align-items:center;justify-content:center}
+.t{background:#eee}.s0{background:#f66}.s1{background:#6af}
+.h0{background:#f99}.h1{background:#9cf}.b0{background:#744}.b1{background:#346}
+.p{display:block;width:80%;height:80%;border-radius:50%;border:2px solid #000;box-sizing:border-box}
+.p0{background:#e22}.p1{background:#27d}
+.go{outline:3px solid gold;cursor:pointer;animation:b .6s infinite alternate}
+@keyframes b{to{transform:scale(1.15)}}
+</style></head><body>
+<h2>🎲 منچ دونفره</h2>
+<div id="lobby">
+  <input id="code" placeholder="کد اتاق (مثلا 123)">
+  <button onclick="join()">ورود / ساخت اتاق</button>
+</div>
+<div id="game" hidden>
+  <div id="info"></div>
+  <div id="board"></div>
+  <button id="dice" onclick="roll()"></button>
+</div>
+
+<script>
+// مختصات ۴۰ خونه مسیر (x,y) روی صفحه ۱۱×۱۱
+const T=[[0,4],[1,4],[2,4],[3,4],[4,4],[4,3],[4,2],[4,1],[4,0],[5,0],[6,0],[6,1],[6,2],[6,3],[6,4],[7,4],[8,4],[9,4],[10,4],[10,5],
+[10,6],[9,6],[8,6],[7,6],[6,6],[6,7],[6,8],[6,9],[6,10],[5,10],[4,10],[4,9],[4,8],[4,7],[4,6],[3,6],[2,6],[1,6],[0,6],[0,5]];
+const H=[[[1,5],[2,5],[3,5],[4,5]],[[9,5],[8,5],[7,5],[6,5]]]; // خونه‌های مقصد
+const B=[[[1,1],[2,1],[1,2],[2,2]],[[8,8],[9,8],[8,9],[9,9]]]; // پایگاه
+
+let ws, me, S;
+const $ = id => document.getElementById(id);
+const ab = (p,s) => (p*20+s)%40;
+// s=-1 پایگاه | 0..39 مسیر | 40..43 خونه مقصد
+const pos = (p,i,s) => s<0 ? B[p][i] : s<40 ? T[ab(p,s)] : H[p][s-40];
+
+function join(){
+  const c=$('code').value.trim(); if(!c) return;
+  ws=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host);
+  ws.onopen=()=>ws.send(JSON.stringify({t:'join',code:c}));
+  ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
+    if(m.err){alert(m.err);return;}
+    me=m.me; S=m.S;
+    $('lobby').hidden=true; $('game').hidden=false; draw();
+    if(m.note) alert(m.note);
+  };
+  ws.onclose=()=>alert('اتصال قطع شد، صفحه رو رفرش کن');
+}
+
+// آیا مهره i بازیکن p با تاس d می‌تونه حرکت کنه؟ مقصد برمی‌گردونه
+function canMove(p,i,d){
+  const s=S.pcs[p*4+i]; let t;
+  if(s<0){ if(d!=6) return null; t=0; }
+  else { t=s+d; if(t>43) return null; }
+  for(let j=0;j<4;j++) if(j!=i && S.pcs[p*4+j]==t) return null;
+  return t;
+}
+
+function roll(){ ws.send(JSON.stringify({t:'roll'})); }
+function move(i){ ws.send(JSON.stringify({t:'move',i})); }
+
+function draw(){
+  const bd=$('board'); bd.innerHTML='';
+  const cells={};
+  for(let y=0;y<11;y++) for(let x=0;x<11;x++){
+    const d=document.createElement('div'); d.className='c'; cells[x+','+y]=d; bd.append(d);
+  }
+  const add=([x,y],cls)=>cells[x+','+y].classList.add(...cls.split(' '));
+  T.forEach((c,k)=>add(c, k==0?'t s0':k==20?'t s1':'t'));
+  H.forEach((h,p)=>h.forEach(c=>add(c,'h'+p)));
+  B.forEach((b,p)=>b.forEach(c=>add(c,'b'+p)));
+  S.pcs.forEach((s,k)=>{
+    const p=k>>2, i=k&3, [x,y]=pos(p,i,s);
+    const el=document.createElement('span'); el.className='p p'+p;
+    if(S.turn==me && p==me && S.dice && S.win<0 && canMove(p,i,S.dice)!=null){
+      el.classList.add('go'); el.onclick=()=>move(i);
+    }
+    cells[x+','+y].append(el);
+  });
+  const col = me==0?'🔴 قرمز':'🔵 آبی';
+  let msg;
+  if(S.n<2) msg='منتظر بازیکن دوم... کد اتاق: '+$('code').value;
+  else if(S.win>=0) msg = S.win==me ? '🏆 تو بردی!' : '😢 حریف برد';
+  else msg = S.turn==me ? (S.dice?'یه مهره انتخاب کن':'نوبت توئه!') : 'نوبت حریفه...';
+  $('info').textContent = 'تو '+col+' هستی — '+msg;
+  const b=$('dice');
+  b.disabled = !(S.n==2 && S.turn==me && !S.dice && S.win<0);
+  b.textContent = S.dice ? '🎲 تاس: '+S.dice : '🎲 تاس بنداز';
+}
+</script></body></html>
