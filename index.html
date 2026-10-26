@@ -1,96 +1,146 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منچ دونفره</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>منچ آنلاین</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;800&display=swap" rel="stylesheet">
 <style>
-body{font-family:tahoma,sans-serif;text-align:center;margin:0;padding:12px;background:#222;color:#eee}
-input,button{font-size:18px;padding:8px 14px;margin:4px;border-radius:8px;border:0}
-button{background:#fc3;cursor:pointer}button:disabled{opacity:.4}
-#board{display:grid;grid-template-columns:repeat(11,1fr);width:min(95vw,480px);aspect-ratio:1;margin:10px auto;direction:ltr;gap:1px}
-.c{display:flex;align-items:center;justify-content:center}
-.t{background:#eee}.s0{background:#f66}.s1{background:#6af}
-.h0{background:#f99}.h1{background:#9cf}.b0{background:#744}.b1{background:#346}
-.p{display:block;width:80%;height:80%;border-radius:50%;border:2px solid #000;box-sizing:border-box}
-.p0{background:#e22}.p1{background:#27d}
-.go{outline:3px solid gold;cursor:pointer;animation:b .6s infinite alternate}
-@keyframes b{to{transform:scale(1.15)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+body{margin:0;min-height:100vh;font-family:Vazirmatn,tahoma,sans-serif;color:#fff;text-align:center;
+background:radial-gradient(circle at 50% 0,#5b21b6,#1e1b4b 55%,#0f172a);display:flex;flex-direction:column;align-items:center;padding:10px}
+h1{margin:8px 0;font-size:28px;text-shadow:0 2px 14px #a78bfa}
+.card{background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);border-radius:22px;padding:24px;margin-top:40px;width:min(92vw,360px)}
+.card p{opacity:.8;margin:4px 0 0}
+input{width:100%;font:inherit;font-size:20px;padding:12px;border-radius:14px;border:0;text-align:center;margin:16px 0;direction:ltr}
+.btn{font:inherit;font-weight:800;font-size:18px;border:0;border-radius:14px;padding:12px 20px;color:#422006;background:linear-gradient(#fde047,#f59e0b);box-shadow:0 5px 0 #b45309;cursor:pointer;width:100%}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #b45309}
+.pl{display:flex;gap:10px;width:min(96vw,500px);margin:6px 0}
+.pn{flex:1;padding:8px;border-radius:14px;background:rgba(255,255,255,.08);border:2px solid transparent;font-weight:800;transition:.3s}
+.pn.on{border-color:#fde047;background:rgba(253,224,71,.22);box-shadow:0 0 18px #fde047aa}
+#board{position:relative;width:min(96vw,500px);aspect-ratio:1;border-radius:18px;background:#fff;box-shadow:0 14px 40px #000a;overflow:hidden;direction:ltr}
+#board>*{position:absolute}
+.pad{background:#fff;border-radius:14%;box-shadow:inset 0 2px 6px #0005}
+.slot{border-radius:50%;box-shadow:inset 0 3px 6px #0007}
+.cell{border-radius:22%;box-shadow:inset 0 0 0 1px #cbd5e1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:min(4vw,20px)}
+.dim{opacity:.35}
+.ctr{background:conic-gradient(from -45deg,#facc15 0 25%,#3b82f6 0 50%,#22c55e 0 75%,#ef4444 0);border-radius:20%;box-shadow:0 0 0 2px #fff}
+.pc{transition:left .45s ease,top .45s ease;display:flex;align-items:center;justify-content:center;z-index:5}
+.pc i{width:76%;height:76%;border-radius:50%;border:2px solid #fff;box-shadow:0 4px 6px #0009,inset 0 -5px 7px #0006,inset 0 3px 4px #fffa}
+.pc.r i{background:radial-gradient(circle at 35% 30%,#fecaca,#dc2626 55%,#7f1d1d)}
+.pc.b i{background:radial-gradient(circle at 35% 30%,#bfdbfe,#2563eb 55%,#1e3a8a)}
+.pc.go{cursor:pointer;z-index:9}
+.pc.go i{animation:pu .55s infinite alternate}
+@keyframes pu{to{transform:scale(1.28);box-shadow:0 0 0 4px #fde047,0 0 16px 6px #fde047}}
+#st{margin:10px 0 4px;font-weight:800;min-height:28px}
+#dbtn{background:none;border:0;padding:6px;cursor:pointer;border-radius:22px}
+#dbtn:disabled{opacity:.55;cursor:default}
+#dbtn.rdy{animation:gl 1s infinite alternate}
+@keyframes gl{to{box-shadow:0 0 0 5px #fde04788,0 0 24px #fde047}}
+#die{width:76px;height:76px;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:18px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11px;box-shadow:0 6px 0 #9ca3af,0 10px 18px #0007}
+#die span{place-self:center;width:15px;height:15px;border-radius:50%}
+#die span.d{background:radial-gradient(circle at 35% 30%,#555,#000)}
+#die.rl{animation:rl .6s}
+@keyframes rl{20%{transform:rotate(120deg) scale(1.2)}50%{transform:rotate(250deg) scale(.9)}80%{transform:rotate(340deg) scale(1.1)}}
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#111c;padding:10px 20px;border-radius:30px;font-weight:800;z-index:50}
+#win{position:fixed;inset:0;background:#000b;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:30px;font-weight:800}
+#win .btn{width:220px}
 </style></head><body>
-<h2>🎲 منچ دونفره</h2>
-<div id="lobby">
-  <input id="code" placeholder="کد اتاق (مثلا 123)">
-  <button onclick="join()">ورود / ساخت اتاق</button>
+<h1>🎲 منچ آنلاین</h1>
+
+<div id="lobby" class="card">
+  <b style="font-size:20px">بزن بریم بازی!</b>
+  <p>یه کد اتاق بنویس و به دوستت بگو همون کد رو بزنه</p>
+  <input id="code" placeholder="مثلا 123" maxlength="20">
+  <button class="btn" onclick="join()">ورود به اتاق</button>
 </div>
+
 <div id="game" hidden>
-  <div id="info"></div>
+  <div class="pl"><div id="p0" class="pn"></div><div id="p1" class="pn"></div></div>
   <div id="board"></div>
-  <button id="dice" onclick="roll()"></button>
+  <div id="st"></div>
+  <button id="dbtn" onclick="roll()"><div id="die"></div></button>
 </div>
+<div id="toast" hidden></div>
+<div id="win" hidden><div id="wm"></div><button class="btn" onclick="location.reload()">بازی جدید</button></div>
 
 <script>
-// مختصات ۴۰ خونه مسیر (x,y) روی صفحه ۱۱×۱۱
 const T=[[0,4],[1,4],[2,4],[3,4],[4,4],[4,3],[4,2],[4,1],[4,0],[5,0],[6,0],[6,1],[6,2],[6,3],[6,4],[7,4],[8,4],[9,4],[10,4],[10,5],
 [10,6],[9,6],[8,6],[7,6],[6,6],[6,7],[6,8],[6,9],[6,10],[5,10],[4,10],[4,9],[4,8],[4,7],[4,6],[3,6],[2,6],[1,6],[0,6],[0,5]];
-const H=[[[1,5],[2,5],[3,5],[4,5]],[[9,5],[8,5],[7,5],[6,5]]]; // خونه‌های مقصد
-const B=[[[1,1],[2,1],[1,2],[2,2]],[[8,8],[9,8],[8,9],[9,9]]]; // پایگاه
-
-let ws, me, S;
-const $ = id => document.getElementById(id);
-const ab = (p,s) => (p*20+s)%40;
-// s=-1 پایگاه | 0..39 مسیر | 40..43 خونه مقصد
-const pos = (p,i,s) => s<0 ? B[p][i] : s<40 ? T[ab(p,s)] : H[p][s-40];
-
+const H=[[[1,5],[2,5],[3,5],[4,5]],[[9,5],[8,5],[7,5],[6,5]]];
+const B=[[[1,1],[2,1],[1,2],[2,2]],[[8,8],[9,8],[8,9],[9,9]]];
+const u=100/11, $=id=>document.getElementById(id);
+const C={r:'#ef4444',b:'#3b82f6',y:'#facc15',g:'#22c55e'};
+const PAT={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+let ws,me,S,PC=[];
+const ab=(p,s)=>(p*20+s)%40;
+const pos=(p,i,s)=>s<0?B[p][i]:s<40?T[ab(p,s)]:H[p][s-40];
+function canMove(p,i,d){
+  const s=S.pcs[p*4+i]; let t;
+  if(s<0){ if(d!=6) return null; t=0; } else { t=s+d; if(t>43) return null; }
+  for(let j=0;j<4;j++) if(j!=i&&S.pcs[p*4+j]==t) return null;
+  return t;
+}
+function mk(cls,x,y,w=1,h=1){
+  const e=document.createElement('div'); e.className=cls;
+  e.style.cssText=`left:${x*u}%;top:${y*u}%;width:${w*u}%;height:${h*u}%`;
+  $('board').append(e); return e;
+}
+function cell(x,y,bg){ const e=mk('cell',x+.04,y+.04,.92,.92); e.style.background=bg; return e; }
+function build(){
+  [[0,0,'r',B[0]],[7,7,'b',B[1]],[7,0,'y',[[8,1],[9,1],[8,2],[9,2]]],[0,7,'g',[[1,8],[2,8],[1,9],[2,9]]]]
+  .forEach(([x,y,c,sl])=>{
+    const d='yg'.includes(c)?' dim':'';
+    mk('q'+d,x,y,4,4).style.background=C[c];
+    mk('pad'+d,x+.5,y+.5,3,3);
+    sl.forEach(([a,b])=>{ mk('slot'+d,a+.12,b+.12,.76,.76).style.background=C[c]; });
+  });
+  for(let k=1;k<=4;k++){ cell(5,k,C.y).classList.add('dim'); cell(5,10-k,C.g).classList.add('dim'); }
+  T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#f1f5f9'); if(k==0||k==20) e.textContent='★'; });
+  H.forEach((h,p)=>h.forEach(([x,y])=>cell(x,y,p?C.b:C.r)));
+  mk('ctr',5,5);
+  for(let k=0;k<8;k++){
+    const e=mk('pc '+(k>>2?'b':'r'),0,0); e.append(document.createElement('i'));
+    e.onclick=()=>pick(k); PC.push(e);
+  }
+  $('die').innerHTML='<span></span>'.repeat(9); showDie(1);
+}
+function showDie(n){ [...$('die').children].forEach((s,i)=>s.className=PAT[n].includes(i)?'d':''); }
+function toast(t){ const e=$('toast'); e.textContent=t; e.hidden=false; setTimeout(()=>e.hidden=true,2200); }
+function pick(k){
+  const p=k>>2,i=k&3;
+  if(p==me&&S.turn==me&&S.dice&&canMove(p,i,S.dice)!=null) move(i);
+}
 function join(){
   const c=$('code').value.trim(); if(!c) return;
   ws=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host);
   ws.onopen=()=>ws.send(JSON.stringify({t:'join',code:c}));
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
-    if(m.err){alert(m.err);return;}
+    if(m.err){ alert(m.err); return; }
     me=m.me; S=m.S;
-    $('lobby').hidden=true; $('game').hidden=false; draw();
-    if(m.note) alert(m.note);
+    if(!PC.length){ $('lobby').hidden=true; $('game').hidden=false; build(); }
+    if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d) showDie(+d[0]); }
+    draw();
   };
   ws.onclose=()=>alert('اتصال قطع شد، صفحه رو رفرش کن');
 }
-
-// آیا مهره i بازیکن p با تاس d می‌تونه حرکت کنه؟ مقصد برمی‌گردونه
-function canMove(p,i,d){
-  const s=S.pcs[p*4+i]; let t;
-  if(s<0){ if(d!=6) return null; t=0; }
-  else { t=s+d; if(t>43) return null; }
-  for(let j=0;j<4;j++) if(j!=i && S.pcs[p*4+j]==t) return null;
-  return t;
-}
-
-function roll(){ ws.send(JSON.stringify({t:'roll'})); }
+function roll(){ $('die').classList.add('rl'); setTimeout(()=>$('die').classList.remove('rl'),600); ws.send(JSON.stringify({t:'roll'})); }
 function move(i){ ws.send(JSON.stringify({t:'move',i})); }
-
 function draw(){
-  const bd=$('board'); bd.innerHTML='';
-  const cells={};
-  for(let y=0;y<11;y++) for(let x=0;x<11;x++){
-    const d=document.createElement('div'); d.className='c'; cells[x+','+y]=d; bd.append(d);
-  }
-  const add=([x,y],cls)=>cells[x+','+y].classList.add(...cls.split(' '));
-  T.forEach((c,k)=>add(c, k==0?'t s0':k==20?'t s1':'t'));
-  H.forEach((h,p)=>h.forEach(c=>add(c,'h'+p)));
-  B.forEach((b,p)=>b.forEach(c=>add(c,'b'+p)));
   S.pcs.forEach((s,k)=>{
-    const p=k>>2, i=k&3, [x,y]=pos(p,i,s);
-    const el=document.createElement('span'); el.className='p p'+p;
-    if(S.turn==me && p==me && S.dice && S.win<0 && canMove(p,i,S.dice)!=null){
-      el.classList.add('go'); el.onclick=()=>move(i);
-    }
-    cells[x+','+y].append(el);
+    const p=k>>2,i=k&3,[x,y]=pos(p,i,s),e=PC[k];
+    e.style.left=x*u+'%'; e.style.top=y*u+'%';
+    e.classList.toggle('go',!!(S.turn==me&&p==me&&S.dice&&S.win<0&&canMove(p,i,S.dice)!=null));
   });
-  const col = me==0?'🔴 قرمز':'🔵 آبی';
-  let msg;
-  if(S.n<2) msg='منتظر بازیکن دوم... کد اتاق: '+$('code').value;
-  else if(S.win>=0) msg = S.win==me ? '🏆 تو بردی!' : '😢 حریف برد';
-  else msg = S.turn==me ? (S.dice?'یه مهره انتخاب کن':'نوبت توئه!') : 'نوبت حریفه...';
-  $('info').textContent = 'تو '+col+' هستی — '+msg;
-  const b=$('dice');
-  b.disabled = !(S.n==2 && S.turn==me && !S.dice && S.win<0);
-  b.textContent = S.dice ? '🎲 تاس: '+S.dice : '🎲 تاس بنداز';
+  $('p0').textContent='🔴 قرمز'+(me==0?' (تو)':'');
+  $('p1').textContent='🔵 آبی'+(me==1?' (تو)':'');
+  $('p0').classList.toggle('on',S.n==2&&S.turn==0&&S.win<0);
+  $('p1').classList.toggle('on',S.n==2&&S.turn==1&&S.win<0);
+  if(S.dice) setTimeout(()=>showDie(S.dice),350);
+  const mine=S.n==2&&S.turn==me&&!S.dice&&S.win<0;
+  $('dbtn').disabled=!mine; $('dbtn').classList.toggle('rdy',mine);
+  $('st').textContent = S.n<2 ? '⏳ منتظر دوستت... کد اتاق: '+$('code').value
+    : S.win>=0 ? '' : S.turn!=me ? 'نوبت حریفه...' : S.dice ? '👆 یه مهره انتخاب کن' : '🎲 نوبت توئه، تاس بنداز!';
+  if(S.win>=0){ $('win').hidden=false; $('wm').textContent = S.win==me ? '🏆 تو بردی!' : '😢 حریف برد'; }
 }
 </script></body></html>
