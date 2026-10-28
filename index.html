@@ -57,6 +57,8 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 .m.ot{align-self:flex-end;background:#6d28d9;border-bottom-left-radius:4px}
 .row{display:flex;gap:6px;margin-top:8px}
 .row input{font-size:15px;padding:9px}
+#sb{opacity:.35;transition:.2s}
+#sb.on{opacity:1;color:#500724;background:linear-gradient(#fda4af,#fb7185)!important;box-shadow:0 0 14px #fb7185}
 .row button{font-size:20px;border:0;border-radius:12px;background:rgba(255,255,255,.18);padding:0 10px;cursor:pointer}
 #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#111c;padding:10px 20px;border-radius:30px;font-weight:800;z-index:50}
 #win{position:fixed;inset:0;background:#000b;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:28px;font-weight:800;padding:20px}
@@ -81,9 +83,9 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
   <div id="chat">
     <div id="msgs"></div>
     <div class="row">
-      <input id="ci" placeholder="یه پیام قشنگ بنویس..." maxlength="200" onkeydown="if(event.key=='Enter')say()">
-      <button onclick="say()">➤</button>
-      <button onclick="say('❤️')">❤️</button><button onclick="say('😘')">😘</button><button onclick="say('😂')">😂</button>
+      <input id="ci" placeholder="یه پیام قشنگ بنویس..." maxlength="200" oninput="upd()" onkeydown="if(event.key=='Enter')say()">
+      <button id="sb" onclick="say()" disabled>➤</button>
+      <button onclick="add('❤️')">❤️</button><button onclick="add('😘')">😘</button><button onclick="add('😂')">😂</button>
     </div>
   </div>
 </div>
@@ -130,8 +132,8 @@ function build(){
     CAP[p]=mk('cap',x,y+3.35,4,.6);
   });
   for(let k=1;k<=4;k++){ cell(5,k,C.g).classList.add('dim'); cell(5,10-k,C.g).classList.add('dim'); }
-  T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff'); e.textContent=(k-me*20+40)%40+1; if(k==0||k==20) e.classList.add('w'); });
-  H.forEach((h,p)=>h.forEach(([x,y],j)=>{ const e=cell(x,y,p?C.b:C.r); e.textContent=41+j; e.classList.add('w'); }));
+  T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff'); if(k==0||k==20){ e.textContent='♥'; e.classList.add('w'); } });
+  H.forEach((h,p)=>h.forEach(([x,y],j)=>{ const e=cell(x,y,p?C.b:C.r); e.classList.add('w'); }));
   mk('ctr',5,5).textContent='♥';
   for(let k=0;k<8;k++){
     const e=mk('pc '+(k>>2?'b':'r'),0,0), i=document.createElement('i'); i.textContent='♥'; e.append(i);
@@ -150,9 +152,11 @@ function roll(){
   $('die').classList.add('rl'); setTimeout(()=>$('die').classList.remove('rl'),600);
   ws.send(JSON.stringify({t:'roll'}));
 }
-function say(t){
-  const v=t||$('ci').value.trim(); if(!v) return;
-  ws.send(JSON.stringify({t:'chat',text:v})); if(!t) $('ci').value='';
+function upd(){ const ok=!!$('ci').value.trim(); $('sb').disabled=!ok; $('sb').classList.toggle('on',ok); }
+function add(e){ $('ci').value+=e; upd(); }
+function say(){
+  const v=$('ci').value.trim(); if(!v) return;
+  ws.send(JSON.stringify({t:'chat',text:v})); $('ci').value=''; upd();
 }
 function connect(){
   ws=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host);
