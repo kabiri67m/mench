@@ -1,8 +1,20 @@
 const http = require('http'), fs = require('fs');
 const { WebSocketServer } = require('ws');
 
+const path = require('path');
 const html = fs.readFileSync(__dirname + '/index.html');
+const TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 const srv = http.createServer((q, r) => {
+  let name = '';
+  try { name = path.basename(decodeURIComponent(q.url.split('?')[0])); } catch {}
+  const type = TYPES[path.extname(name).toLowerCase()];
+  if (type && name.startsWith('photo')) {          // فقط عکس‌هایی که اسمشون photo... شروع می‌شه
+    return fs.readFile(path.join(__dirname, name), (e, d) => {
+      if (e) { r.writeHead(404); return r.end(); }
+      r.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' });
+      r.end(d);
+    });
+  }
   r.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   r.end(html);
 });

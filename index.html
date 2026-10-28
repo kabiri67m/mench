@@ -26,6 +26,9 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 .pad{background:#fff;border-radius:14%;box-shadow:inset 0 2px 6px #0005}
 .slot{border-radius:50%;box-shadow:inset 0 3px 6px #0007}
 .q{border-radius:16%}
+.ph{border-radius:50%;overflow:hidden;background:#fff;border:3px solid #fff;box-shadow:0 4px 10px #0006;display:flex;align-items:center;justify-content:center;font-size:calc(var(--bs)/11*1.5);color:#f43f5e}
+.ph img{width:100%;height:100%;object-fit:cover}
+.cap{color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;white-space:nowrap;font-size:calc(var(--bs)/11*.38)}
 .cell{border-radius:50%;box-shadow:inset 0 -3px 0 #0002,0 2px 4px #0003;display:flex;align-items:center;justify-content:center;color:#be185d;font-weight:800;font-size:calc(var(--bs)/11*.36)}
 .cell.w{color:#fff}
 .dim{opacity:.35}
@@ -95,7 +98,7 @@ const B=[[[1,1],[2,1],[1,2],[2,2]],[[8,8],[9,8],[8,9],[9,9]]];
 const u=100/11, $=id=>document.getElementById(id);
 const C={r:'#f43f5e',b:'#8b5cf6',y:'#fbbf24',g:'#f9a8d4'};
 const PAT={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-let ws,me,S,PC=[],built=false,myId,myName;
+let ws,me,S,PC=[],CAP=[],built=false,myId,myName;
 const ls={get:k=>{try{return localStorage.getItem(k)}catch{return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch{}}};
 const ab=(p,s)=>(p*20+s)%40;
 const pos=(p,i,s)=>s<0?B[p][i]:s<40?T[ab(p,s)]:H[p][s-40];
@@ -112,14 +115,21 @@ function mk(cls,x,y,w=1,h=1){
 }
 function cell(x,y,bg){ const e=mk('cell',x+.04,y+.04,.92,.92); e.style.background=bg; return e; }
 function build(){
-  [[0,0,'r',B[0]],[7,7,'b',B[1]],[7,0,'y',[[8,1],[9,1],[8,2],[9,2]]],[0,7,'g',[[1,8],[2,8],[1,9],[2,9]]]]
+  [[0,0,'r',B[0]],[7,7,'b',B[1]]]
   .forEach(([x,y,c,sl])=>{
     const d='yg'.includes(c)?' dim':'';
     mk('q'+d,x,y,4,4).style.background=C[c];
     mk('pad'+d,x+.5,y+.5,3,3);
     sl.forEach(([a,b])=>{ mk('slot'+d,a+.12,b+.12,.76,.76).style.background=C[c]; });
   });
-  for(let k=1;k<=4;k++){ cell(5,k,C.y).classList.add('dim'); cell(5,10-k,C.g).classList.add('dim'); }
+  [[7,0,0],[0,7,1]].forEach(([x,y,p])=>{
+    mk('q',x,y,4,4).style.background=p?C.b:C.r;
+    const d=mk('ph',x+.45,y+.25,3.1,3.1), im=new Image(), E=['jpg','jpeg','png','webp']; let n=0;
+    im.onerror=()=>{ if(++n<E.length) im.src='photo'+(p+1)+'.'+E[n]; else { im.remove(); d.textContent='♥'; } };
+    im.src='photo'+(p+1)+'.jpg'; d.append(im);
+    CAP[p]=mk('cap',x,y+3.35,4,.6);
+  });
+  for(let k=1;k<=4;k++){ cell(5,k,C.g).classList.add('dim'); cell(5,10-k,C.g).classList.add('dim'); }
   T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff'); e.textContent=(k-me*20+40)%40+1; if(k==0||k==20) e.classList.add('w'); });
   H.forEach((h,p)=>h.forEach(([x,y],j)=>{ const e=cell(x,y,p?C.b:C.r); e.textContent=41+j; e.classList.add('w'); }));
   mk('ctr',5,5).textContent='♥';
@@ -176,6 +186,7 @@ function draw(){
     e.classList.toggle('go',!!(S.turn==me&&p==me&&S.dice&&S.win<0&&canMove(p,i,S.dice)!=null));
   });
   [0,1].forEach(p=>{
+    CAP[p].textContent=S.names[p]||'';
     $('p'+p).textContent=(p?'💜 ':'❤️ ')+(S.names[p]||'منتظر...')+(me==p?' (تو)':'');
     $('p'+p).classList.toggle('on',S.n==2&&S.turn==p&&S.win<0);
   });
