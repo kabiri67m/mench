@@ -31,6 +31,10 @@ function can(p, i, d) {
   if (s < 0) { if (d != 6) return null; t = 0; }
   else { t = s + d; if (t > 43) return null; }
   for (let j = 0; j < 4; j++) if (j != i && S.pcs[p * 4 + j] == t) return null;
+  if (t < 40) { // خانه شروع حریف قفله: اگه مهره‌ی حریف اونجاست نمی‌شه روش رفت یا زدش
+    const o = 1 - p;
+    for (let j = 0; j < 4; j++) if (S.pcs[o * 4 + j] == 0 && ab(o, 0) == ab(p, t)) return null;
+  }
   return t;
 }
 

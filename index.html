@@ -40,13 +40,14 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 .pc.go{cursor:pointer;z-index:9}
 .pc.go i{animation:pu .55s infinite alternate}
 @keyframes pu{to{transform:scale(1.28);box-shadow:0 0 0 4px #fde047,0 0 16px 6px #fde047}}
-#st{margin:10px 0 4px;font-weight:800;min-height:28px}
-#dbtn{background:none;border:0;padding:6px;cursor:pointer;border-radius:22px}
+.st{margin:6px 0;font-weight:800;min-height:26px;width:var(--bs)}
+#dbtn{left:44.09%;top:44.09%;width:11.82%;height:11.82%;z-index:4;background:none;border:0;padding:0;cursor:pointer;border-radius:24%}
+#dbtn::after{content:'';position:absolute;inset:-35%}
 #dbtn:disabled{opacity:.55;cursor:default}
 #dbtn.rdy{animation:gl 1s infinite alternate}
 @keyframes gl{to{box-shadow:0 0 0 5px #fda4af88,0 0 24px #fb7185}}
-#die{width:76px;height:76px;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:18px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11px;box-shadow:0 6px 0 #9ca3af,0 10px 18px #0007}
-#die span{place-self:center;width:15px;height:15px;border-radius:50%}
+#die{width:100%;height:100%;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:24%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:13%;box-shadow:0 3px 0 #9ca3af,0 5px 10px #0008}
+#die span{place-self:center;width:calc(var(--bs)/11*.26);height:calc(var(--bs)/11*.26);border-radius:50%}
 #die span.d{background:radial-gradient(circle at 35% 30%,#fb7185,#9f1239)}
 #die.rl{animation:rl .6s}
 @keyframes rl{20%{transform:rotate(120deg) scale(1.2)}50%{transform:rotate(250deg) scale(.9)}80%{transform:rotate(340deg) scale(1.1)}}
@@ -63,7 +64,7 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#111c;padding:10px 20px;border-radius:30px;font-weight:800;z-index:50}
 #win{position:fixed;inset:0;background:#000b;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:28px;font-weight:800;padding:20px}
 #win .btn{width:220px}
-@media(max-width:480px){h1{font-size:20px;margin:2px 0}#die{width:64px;height:64px;padding:9px}#die span{width:12px;height:12px}#msgs{height:130px}}
+@media(max-width:480px){h1{font-size:20px;margin:2px 0}#msgs{height:130px}}
 </style></head><body>
 <div id="hs"></div>
 <h1>💕 منچ ما دو نفر 💕</h1>
@@ -77,9 +78,9 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 
 <div id="game" hidden>
   <div class="pl"><div id="p0" class="pn"></div><div id="p1" class="pn"></div></div>
-  <div id="board"></div>
-  <div id="st"></div>
-  <button id="dbtn" onclick="roll()"><div id="die"></div></button>
+  <div id="st0" class="st"></div>
+  <div id="board"><button id="dbtn" onclick="roll()"><div id="die"></div></button></div>
+  <div id="st1" class="st"></div>
   <div id="chat">
     <div id="msgs"></div>
     <div class="row">
@@ -108,6 +109,7 @@ function canMove(p,i,d){
   const s=S.pcs[p*4+i]; let t;
   if(s<0){ if(d!=6) return null; t=0; } else { t=s+d; if(t>43) return null; }
   for(let j=0;j<4;j++) if(j!=i&&S.pcs[p*4+j]==t) return null;
+  if(t<40){ const o=1-p; for(let j=0;j<4;j++) if(S.pcs[o*4+j]==0&&ab(o,0)==ab(p,t)) return null; }
   return t;
 }
 function mk(cls,x,y,w=1,h=1){
@@ -169,7 +171,7 @@ function connect(){
     if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d) showDie(+d[0]); }
     draw(); chat(m.chat);
   };
-  ws.onclose=()=>{ if(built) $('st').textContent='🔌 اتصال قطع شد، دوباره وصل می‌شم...'; setTimeout(connect,2000); };
+  ws.onclose=()=>{ if(built) $('st1').textContent='🔌 اتصال قطع شد، دوباره وصل می‌شم...'; setTimeout(connect,2000); };
 }
 function start(){
   const n=$('nm').value.trim(); if(!n) return;
@@ -198,8 +200,10 @@ function draw(){
   const mine=S.n==2&&S.turn==me&&!S.dice&&S.win<0;
   $('dbtn').disabled=!mine; $('dbtn').classList.toggle('rdy',mine);
   const other=S.names[1-me]||'عشقم';
-  $('st').textContent = S.n<2 ? '💌 منتظر '+other+'...'
-    : S.win>=0 ? '' : S.turn!=me ? 'نوبت '+other+'ـه...' : S.dice ? '👆 یه مهره انتخاب کن' : '🎲 نوبت توئه، تاس بنداز!';
+  const live=S.n==2&&S.win<0;
+  $('st0').textContent = live&&S.turn!=me ? (S.dice ? '🎲 '+other+' تاس '+S.dice+' انداخت...' : '⏳ نوبت '+other+'ـه، منتظر تاسش باش') : '';
+  $('st1').textContent = S.n<2 ? '💌 منتظر '+other+'...'
+    : live&&S.turn==me ? (S.dice ? '👆 تاس '+S.dice+' آمد، یه مهره انتخاب کن' : '🎲 نوبت توئه، تاس بنداز!') : '';
   $('win').hidden=S.win<0;
   if(S.win>=0) $('wm').textContent='🏆 '+S.names[S.win]+' برد! 💖'+(S.win==me?'\nجایزه‌ات یه بغل محکمه 🤗':'');
 }
