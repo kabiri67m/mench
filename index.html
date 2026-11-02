@@ -41,16 +41,17 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 .pc.go i{animation:pu .55s infinite alternate}
 @keyframes pu{to{transform:scale(1.28);box-shadow:0 0 0 4px #fde047,0 0 16px 6px #fde047}}
 .st{margin:6px 0;font-weight:800;min-height:26px;width:var(--bs)}
-#dbtn{display:block;left:43.64%;top:43.64%;width:12.73%;height:12.73%;z-index:4;background:none;border:0;padding:0;cursor:pointer;border-radius:24%}
-#dbtn::after{content:'';position:absolute;inset:-35%}
+#dbtn{display:block;left:45.18%;top:45.18%;width:9.64%;height:9.64%;z-index:4;background:none;border:0;padding:0;cursor:pointer;border-radius:24%}
+#dbtn::after{content:'';position:absolute;inset:-30%}
 #dbtn:disabled{opacity:.55;cursor:default}
 #dbtn.rdy{animation:gl 1s infinite alternate}
 @keyframes gl{to{box-shadow:0 0 0 5px #fda4af88,0 0 24px #fb7185}}
 #die{position:absolute;inset:0;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:24%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:13%;box-shadow:0 3px 0 #9ca3af,0 5px 10px #0008}
-#die span{place-self:center;width:calc(var(--bs)/11*.26);height:calc(var(--bs)/11*.26);border-radius:50%}
+#die span{place-self:center;width:calc(var(--bs)/11*.2);height:calc(var(--bs)/11*.2);border-radius:50%}
 #die span.d{background:radial-gradient(circle at 35% 30%,#fb7185,#9f1239)}
-#die.rl{animation:rl .6s}
-@keyframes rl{20%{transform:rotate(120deg) scale(1.2)}50%{transform:rotate(250deg) scale(.9)}80%{transform:rotate(340deg) scale(1.1)}}
+#die.rl{animation:rl .8s ease-in-out}
+#dbtn.up{z-index:30;opacity:1!important}
+@keyframes rl{0%{transform:scale(1)}25%{transform:rotate(130deg) scale(2.4)}55%{transform:rotate(260deg) scale(2.1)}80%{transform:rotate(340deg) scale(1.4)}100%{transform:rotate(360deg) scale(1)}}
 #chat{width:var(--bs);margin:14px 0;background:rgba(0,0,0,.25);border-radius:18px;padding:10px}
 #msgs{height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:4px;text-align:right}
 .m{max-width:78%;padding:6px 12px;border-radius:14px;word-break:break-word;font-size:15px}
@@ -148,8 +149,16 @@ function pick(k){
   const p=k>>2,i=k&3;
   if(p==me&&S.turn==me&&S.dice&&canMove(p,i,S.dice)!=null) ws.send(JSON.stringify({t:'move',i}));
 }
+let rolling=false, face=1, prevDice=0;
+function setFace(n){ face=n; if(!rolling) showDie(n); }
+function animateRoll(){
+  if(rolling) return; rolling=true;
+  const d=$('die'), b=$('dbtn'); d.classList.add('rl'); b.classList.add('up');
+  const iv=setInterval(()=>showDie(1+Math.floor(Math.random()*6)),90);
+  setTimeout(()=>{ clearInterval(iv); rolling=false; d.classList.remove('rl'); b.classList.remove('up'); showDie(face); },800);
+}
 function roll(){
-  $('die').classList.add('rl'); setTimeout(()=>$('die').classList.remove('rl'),600);
+  animateRoll();
   ws.send(JSON.stringify({t:'roll'}));
 }
 function upd(){ const ok=!!$('ci').value.trim(); $('sb').disabled=!ok; $('sb').classList.toggle('on',ok); }
@@ -166,7 +175,7 @@ function connect(){
     if(m.err){ ws.onclose=null; alert(m.err); return; }
     me=m.me; S=m.S;
     if(!built){ $('lobby').hidden=true; $('game').hidden=false; build(); }
-    if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d) showDie(+d[0]); }
+    if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d){ setFace(+d[0]); if(S.turn==me) animateRoll(); } }
     draw(); chat(m.chat);
   };
   ws.onclose=()=>{ if(built) $('st1').textContent='🔌 اتصال قطع شد، دوباره وصل می‌شم...'; setTimeout(connect,2000); };
@@ -194,7 +203,8 @@ function draw(){
     $('p'+p).textContent=(p?'💜 ':'❤️ ')+(S.names[p]||'منتظر...')+(me==p?' (تو)':'');
     $('p'+p).classList.toggle('on',S.n==2&&S.turn==p&&S.win<0);
   });
-  if(S.dice) setTimeout(()=>showDie(S.dice),350);
+  if(S.dice){ if(!prevDice&&S.turn!=me) animateRoll(); setFace(S.dice); }
+  prevDice=S.dice;
   const mine=S.n==2&&S.turn==me&&!S.dice&&S.win<0;
   $('dbtn').disabled=!mine; $('dbtn').classList.toggle('rdy',mine);
   const other=S.names[1-me]||'عشقم';
