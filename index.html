@@ -41,12 +41,12 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 .pc.go i{animation:pu .55s infinite alternate}
 @keyframes pu{to{transform:scale(1.28);box-shadow:0 0 0 4px #fde047,0 0 16px 6px #fde047}}
 .st{margin:6px 0;font-weight:800;min-height:26px;width:var(--bs)}
-#dbtn{left:44.09%;top:44.09%;width:11.82%;height:11.82%;z-index:4;background:none;border:0;padding:0;cursor:pointer;border-radius:24%}
+#dbtn{display:block;left:43.64%;top:43.64%;width:12.73%;height:12.73%;z-index:4;background:none;border:0;padding:0;cursor:pointer;border-radius:24%}
 #dbtn::after{content:'';position:absolute;inset:-35%}
 #dbtn:disabled{opacity:.55;cursor:default}
 #dbtn.rdy{animation:gl 1s infinite alternate}
 @keyframes gl{to{box-shadow:0 0 0 5px #fda4af88,0 0 24px #fb7185}}
-#die{width:100%;height:100%;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:24%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:13%;box-shadow:0 3px 0 #9ca3af,0 5px 10px #0008}
+#die{position:absolute;inset:0;background:linear-gradient(145deg,#fff,#d1d5db);border-radius:24%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:13%;box-shadow:0 3px 0 #9ca3af,0 5px 10px #0008}
 #die span{place-self:center;width:calc(var(--bs)/11*.26);height:calc(var(--bs)/11*.26);border-radius:50%}
 #die span.d{background:radial-gradient(circle at 35% 30%,#fb7185,#9f1239)}
 #die.rl{animation:rl .6s}
@@ -133,10 +133,8 @@ function build(){
     im.src='photo'+(p+1)+'.jpg'; d.append(im);
     CAP[p]=mk('cap',x,y+3.35,4,.6);
   });
-  for(let k=1;k<=4;k++){ cell(5,k,C.g).classList.add('dim'); cell(5,10-k,C.g).classList.add('dim'); }
   T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff'); if(k==0||k==20){ e.textContent='♥'; e.classList.add('w'); } });
   H.forEach((h,p)=>h.forEach(([x,y],j)=>{ const e=cell(x,y,p?C.b:C.r); e.classList.add('w'); }));
-  mk('ctr',5,5).textContent='♥';
   for(let k=0;k<8;k++){
     const e=mk('pc '+(k>>2?'b':'r'),0,0), i=document.createElement('i'); i.textContent='♥'; e.append(i);
     e.onclick=()=>pick(k); PC.push(e);
