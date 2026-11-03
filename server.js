@@ -24,7 +24,7 @@ const ab = (p, s) => (p * 20 + s) % 40;
 const fresh = () => ({ turn: 0, dice: 0, win: -1, pcs: Array(8).fill(-1) });
 let S = fresh();
 let chat = [];
-const P = [{ id: null, name: '', ws: null }, { id: null, name: '', ws: null }];
+const P = [{ id: null, name: '', ws: null, w: 0, l: 0 }, { id: null, name: '', ws: null, w: 0, l: 0 }];
 
 function can(p, i, d) {
   const s = S.pcs[p * 4 + i]; let t;
@@ -38,11 +38,12 @@ function can(p, i, d) {
   return t;
 }
 
-function push(note) {
+function push(note, by) {
   const n = P.filter(p => p.ws).length;
   const names = P.map(p => p.name);
+  const stats = P.map(p => [p.w, p.l]);   // [برد, باخت] هر نفر
   P.forEach((p, k) => p.ws && p.ws.readyState == 1 &&
-    p.ws.send(JSON.stringify({ me: k, S: { ...S, n, names }, chat, note })));
+    p.ws.send(JSON.stringify({ me: k, S: { ...S, n, names, stats }, chat, note, by })));
 }
 
 wss.on('connection', ws => {
@@ -58,7 +59,10 @@ wss.on('connection', ws => {
       if (k < 0) k = P.findIndex(p => !p.ws);         // جای خالی
       if (k < 0) return ws.send(JSON.stringify({ err: 'این اتاق فقط برای دو نفره 💕' }));
       const old = P[k].ws;
-      P[k] = { id, name, ws }; me = k;
+      // آمار رو از مرورگر خود بازیکن هم می‌گیریم (اگه سرور خوابیده و ریست شده باشه، برمی‌گرده)
+      const w = Math.max(0, parseInt(m.w) || 0), l = Math.max(0, parseInt(m.l) || 0);
+      const keep = P[k].id === id && P[k].w + P[k].l >= w + l;
+      P[k] = { id, name, ws, w: keep ? P[k].w : w, l: keep ? P[k].l : l }; me = k;
       if (old && old !== ws) old.close();
       return push();
     }
@@ -85,7 +89,8 @@ wss.on('connection', ws => {
       let any = false;
       for (let i = 0; i < 4; i++) if (can(me, i, d) != null) any = true;
       if (any) { S.dice = d; push(); }
-      else { S.turn = 1 - me; push('تاس ' + d + ' آمد — حرکتی نبود!'); }
+      else if (d == 6) push('تاس 6 آمد ولی حرکتی نبود — یه بار دیگه بنداز! 🎲', me); // شیش = نوبت اضافه، حتی بدون حرکت
+      else { S.turn = 1 - me; push('تاس ' + d + ' آمد — حرکتی نبود!', me); }
     }
 
     if (m.t == 'move' && S.dice) {
@@ -99,7 +104,7 @@ wss.on('connection', ws => {
           if (s2 >= 0 && s2 < 40 && ab(o, s2) == ab(me, t)) S.pcs[o * 4 + j] = -1;
         }
       }
-      if ([0, 1, 2, 3].every(j => S.pcs[me * 4 + j] >= 40)) S.win = me;
+      if ([0, 1, 2, 3].every(j => S.pcs[me * 4 + j] >= 40)) { S.win = me; P[me].w++; P[1 - me].l++; }
       S.turn = d == 6 ? me : 1 - me;
       S.dice = 0;
       push();

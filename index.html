@@ -95,8 +95,28 @@ input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:14px;bor
 <div id="win" hidden><div id="wm"></div><button class="btn" onclick="ws.send(JSON.stringify({t:'reset'}))">بازی دوباره 💞</button></div>
 
 <script>
-const T=[[0,4],[1,4],[2,4],[3,4],[4,4],[4,3],[4,2],[4,1],[4,0],[5,0],[6,0],[6,1],[6,2],[6,3],[6,4],[7,4],[8,4],[9,4],[10,4],[10,5],
-[10,6],[9,6],[8,6],[7,6],[6,6],[6,7],[6,8],[6,9],[6,10],[5,10],[4,10],[4,9],[4,8],[4,7],[4,6],[3,6],[2,6],[1,6],[0,6],[0,5]];
+const DENSE=[];
+// مسیر منحنی: همون مسیر ضربدری، ولی با گوشه‌های گرد؛ ۴۰ خونه با فاصله مساوی روش می‌شینن
+const T=(()=>{
+  const V=[[.5,4.5],[4.5,4.5],[4.5,.5],[6.5,.5],[6.5,4.5],[10.5,4.5],[10.5,6.5],[6.5,6.5],[6.5,10.5],[4.5,10.5],[4.5,6.5],[.5,6.5]], r=.9, n=V.length;
+  const pts=[[.5,5.5]];
+  for(let i=0;i<n;i++){
+    const v=V[i], p=V[(i+n-1)%n], q=V[(i+1)%n];
+    const vec=o=>{ const dx=o[0]-v[0], dy=o[1]-v[1], l=Math.hypot(dx,dy); return [dx/l*r,dy/l*r]; };
+    const a=vec(p), b=vec(q), c=[v[0]+a[0]+b[0], v[1]+a[1]+b[1]];
+    for(let j=0;j<=16;j++){ const t=j/16*Math.PI/2;
+      pts.push([c[0]-b[0]*Math.cos(t)-a[0]*Math.sin(t), c[1]-b[1]*Math.cos(t)-a[1]*Math.sin(t)]); }
+  }
+  pts.push([.5,5.5]);
+  const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const L=cum[cum.length-1], out=[]; let j=1;
+  for(let k=1;k<=40;k++){
+    const s=L*k/40; while(j<pts.length-1&&cum[j]<s) j++;
+    const f=(s-cum[j-1])/((cum[j]-cum[j-1])||1);
+    out.push([pts[j-1][0]+(pts[j][0]-pts[j-1][0])*f-.5, pts[j-1][1]+(pts[j][1]-pts[j-1][1])*f-.5]);
+  }
+  DENSE.push(...pts); return out;
+})();
 const H=[[[1,5],[2,5],[3,5],[4,5]],[[9,5],[8,5],[7,5],[6,5]]];
 const B=[[[1,1],[2,1],[1,2],[2,2]],[[8,8],[9,8],[8,9],[9,9]]];
 const u=100/11, $=id=>document.getElementById(id);
@@ -118,7 +138,7 @@ function mk(cls,x,y,w=1,h=1){
   e.style.cssText=`left:${x*u}%;top:${y*u}%;width:${w*u}%;height:${h*u}%`;
   $('board').append(e); return e;
 }
-function cell(x,y,bg){ const e=mk('cell',x+.04,y+.04,.92,.92); e.style.background=bg; return e; }
+function cell(x,y,bg,m=.04){ const e=mk('cell',x+m,y+m,1-2*m,1-2*m); e.style.background=bg; return e; }
 function build(){
   [[0,0,'r',B[0]],[7,7,'b',B[1]]]
   .forEach(([x,y,c,sl])=>{
@@ -134,7 +154,13 @@ function build(){
     im.src='photo'+(p+1)+'.jpg'; d.append(im);
     CAP[p]=mk('cap',x,y+3.35,4,.6);
   });
-  T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff'); if(k==0||k==20){ e.textContent='♥'; e.classList.add('w'); } });
+  { const NS='http://www.w3.org/2000/svg', sv=document.createElementNS(NS,'svg'), pa=document.createElementNS(NS,'path');
+    sv.setAttribute('viewBox','0 0 11 11'); sv.style.cssText='left:0;top:0;width:100%;height:100%;pointer-events:none';
+    pa.setAttribute('d','M'+DENSE.map(p=>p.join(',')).join('L')+'Z');
+    pa.setAttribute('fill','none'); pa.setAttribute('stroke','#fff'); pa.setAttribute('stroke-opacity','.55');
+    pa.setAttribute('stroke-width','.95'); pa.setAttribute('stroke-linejoin','round');
+    sv.append(pa); $('board').append(sv); }
+  T.forEach(([x,y],k)=>{ const e=cell(x,y,k==0?C.r:k==20?C.b:'#fff',.1); if(k==0||k==20){ e.textContent='♥'; e.classList.add('w'); } });
   H.forEach((h,p)=>h.forEach(([x,y],j)=>{ const e=cell(x,y,p?C.b:C.r); e.classList.add('w'); }));
   for(let k=0;k<8;k++){
     const e=mk('pc '+(k>>2?'b':'r'),0,0), i=document.createElement('i'); i.textContent='♥'; e.append(i);
@@ -169,13 +195,13 @@ function say(){
 }
 function connect(){
   ws=new WebSocket((location.protocol=='https:'?'wss://':'ws://')+location.host);
-  ws.onopen=()=>ws.send(JSON.stringify({t:'join',id:myId,name:myName}));
+  ws.onopen=()=>ws.send(JSON.stringify({t:'join',id:myId,name:myName,w:+ls.get('w')||0,l:+ls.get('l')||0}));
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
     if(m.err){ ws.onclose=null; alert(m.err); return; }
-    me=m.me; S=m.S;
+    me=m.me; S=m.S; ls.set('w',S.stats[me][0]); ls.set('l',S.stats[me][1]);
     if(!built){ $('lobby').hidden=true; $('game').hidden=false; build(); }
-    if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d){ setFace(+d[0]); if(S.turn==me) animateRoll(); } }
+    if(m.note){ toast(m.note); const d=m.note.match(/\d/); if(d){ setFace(+d[0]); if(m.by!=me) animateRoll(); } }
     draw(); chat(m.chat);
   };
   ws.onclose=()=>{ if(built) $('st1').textContent='🔌 اتصال قطع شد، دوباره وصل می‌شم...'; setTimeout(connect,2000); };
@@ -200,7 +226,9 @@ function draw(){
   });
   [0,1].forEach(p=>{
     CAP[p].textContent=S.names[p]||'';
-    $('p'+p).textContent=(p?'💜 ':'❤️ ')+(S.names[p]||'منتظر...')+(me==p?' (تو)':'');
+    const el=$('p'+p); el.textContent=(p?'💜 ':'❤️ ')+(S.names[p]||'منتظر...')+(me==p?' (تو)':'');
+    const sm=document.createElement('small'); sm.textContent='🏆 برد '+S.stats[p][0]+'  ·  💔 باخت '+S.stats[p][1];
+    sm.style.cssText='display:block;font-weight:400;opacity:.9;font-size:12px'; el.append(sm);
     $('p'+p).classList.toggle('on',S.n==2&&S.turn==p&&S.win<0);
   });
   if(S.dice){ if(!prevDice&&S.turn!=me) animateRoll(); setFace(S.dice); }
