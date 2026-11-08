@@ -4,18 +4,28 @@ const { WebSocketServer } = require('ws');
 const html = fs.readFileSync(__dirname + '/index.html');
 const srv = http.createServer((q, r) => {
   if (q.url.startsWith('/ping')) { r.writeHead(200); return r.end('ok'); }
+  if (q.url.startsWith('/lb')) {
+    const top = [...LB.values()].filter(e => e.w > 0).sort((a, b) => b.w - a.w || a.l - b.l).slice(0, 5);
+    r.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }); return r.end(JSON.stringify(top));
+  }
   r.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   r.end(html);
 });
 const wss = new WebSocketServer({ server: srv });
 
 const ab = (p, s) => (p * 10 + s) % 40;
-const fresh = () => ({ turn: 0, dice: 0, win: -1, pcs: Array(16).fill(-1) });
+const fresh = () => ({ started: false, turn: 0, dice: 0, win: -1, pcs: Array(16).fill(-1) });
 const BN = ['ربات ۱', 'ربات ۲', 'ربات ۳', 'ربات ۴'];
-const rooms = new Map();                       // هر بازی یک اتاق مستقل دارد
+const rooms = new Map(), LB = new Map();   // LB: جدول برترین بازیکنان                       // هر بازی یک اتاق مستقل دارد
 const humans = R => R.P.filter(s => s.ws).length;
-const mkRoom = (code, pub, diff) => ({ code, pub, diff, S: fresh(), chat: [], bt: null, t: Date.now(),
+const mkRoom = (code, pub, diff) => ({ code, pub, diff, S: fresh(), chat: [], bt: null, dl: 0, t: Date.now(),
   P: [0, 1, 2, 3].map(() => ({ id: null, name: '', ws: null, w: 0, l: 0 })) });
+function lbSet(id, n, w, l) {
+  if (!id) return;
+  const e = LB.get(id);
+  if (!e || e.w + e.l <= w + l) LB.set(id, { n, w, l });
+  if (LB.size > 2000) LB.delete(LB.keys().next().value);
+}
 function create(pub, diff) {
   if (rooms.size >= 300) return null;
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c;
@@ -35,13 +45,14 @@ function can(R, p, i, d) {
   return t;
 }
 
-function push(R, note, by, die) {
+function send(R, note, by, die) {
   R.t = Date.now();
-  const extra = { n: humans(R), names: R.P.map((s, k) => nm(R, k)), bots: R.P.map(s => !s.ws), stats: R.P.map(s => [s.w, s.l]) };
+  const left = R.dl ? Math.max(0, Math.round((R.dl - Date.now()) / 1000)) : 0;
+  const extra = { n: humans(R), left, names: R.P.map((s, k) => nm(R, k)), bots: R.P.map(s => !s.ws), stats: R.P.map(s => [s.w, s.l]) };
   R.P.forEach((s, k) => s.ws && s.ws.readyState == 1 &&
     s.ws.send(JSON.stringify({ me: k, room: R.code, S: { ...R.S, ...extra }, chat: R.chat, note, by, die })));
-  sched(R);
 }
+function push(R, note, by, die) { sched(R); send(R, note, by, die); }
 
 function doRoll(R, p) {
   const S = R.S, d = 1 + Math.floor(Math.random() * 6);
@@ -64,7 +75,7 @@ function doMove(R, p, i) {
       }
   if ([0, 1, 2, 3].every(j => S.pcs[p * 4 + j] >= 40)) {
     S.win = p;
-    R.P.forEach((s, k) => { if (s.ws) k == p ? s.w++ : s.l++; });
+    R.P.forEach((s, k) => { if (s.ws) { k == p ? s.w++ : s.l++; lbSet(s.id, s.name, s.w, s.l); } });
   } else if (d != 6) S.turn = (S.turn + 1) % 4;
   S.dice = 0;
   push(R);
@@ -88,16 +99,18 @@ function botMove(R, p) {
   return R.diff == 'easy' ? ok[Math.floor(Math.random() * ok.length)] : b;
 }
 
-// نوبت ربات‌ها (فقط وقتی حداقل یک کاربر واقعی در همان بازی متصل است)
+// نوبت ربات‌ها و زمان‌سنج کاربران (۳۰ ثانیه؛ در صورت بی‌عملی حرکت خودکار انجام می‌شود)
+const TURN = 30000;
 function sched(R) {
-  clearTimeout(R.bt);
+  clearTimeout(R.bt); R.dl = 0;
   const S = R.S;
-  if (S.win >= 0 || !humans(R) || R.P[S.turn].ws) return;
+  if (!S.started || S.win >= 0 || !humans(R)) return;
+  const p = S.turn, human = !!R.P[p].ws;
+  if (human) R.dl = Date.now() + TURN;
   R.bt = setTimeout(() => {
-    const p = S.turn;
-    if (R.S.win >= 0 || R.P[p].ws) return;
+    if (R.S !== S || S.win >= 0 || S.turn != p) return;
     if (S.dice) doMove(R, p, botMove(R, p)); else doRoll(R, p);
-  }, S.dice ? 1000 : 1400);
+  }, human ? TURN : S.dice ? 1000 : 1400);
 }
 
 wss.on('connection', ws => {
@@ -134,6 +147,7 @@ wss.on('connection', ws => {
       const w = Math.max(0, parseInt(m.w) || 0), l = Math.max(0, parseInt(m.l) || 0);
       const keep = R.P[k].id === id && R.P[k].w + R.P[k].l >= w + l;
       R.P[k] = { id, name, ws, w: keep ? R.P[k].w : w, l: keep ? R.P[k].l : l }; me = k;
+      lbSet(id, name, R.P[k].w, R.P[k].l);
       if (old && old !== ws) old.close();
       return push(R);
     }
@@ -144,11 +158,15 @@ wss.on('connection', ws => {
       const text = String(m.text || '').trim().slice(0, 200);
       if (!text) return;
       R.chat.push({ f: me, n: R.P[me].name, text }); R.chat = R.chat.slice(-40);
-      return push(R);
+      return send(R);
+    }
+    if (m.t == 'start') {
+      if (!S.started && S.win < 0) { S.started = true; S.turn = Math.floor(Math.random() * 4); push(R); }
+      return;
     }
     if (m.t == 'reset') { if (S.win >= 0) { R.S = fresh(); push(R); } return; }
 
-    if (S.turn != me || S.win >= 0) return;
+    if (!S.started || S.turn != me || S.win >= 0) return;
     if (m.t == 'roll' && !S.dice) doRoll(R, me);
     if (m.t == 'move' && S.dice) doMove(R, me, +m.i);
   });

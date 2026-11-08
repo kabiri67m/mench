@@ -67,10 +67,15 @@ select{width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid 
 .err{color:#fca5a5;min-height:20px;font-size:13px;margin-top:10px}
 details{text-align:right;margin-top:12px;font-size:13px;opacity:.9}
 summary{cursor:pointer;font-weight:700}
-details ul{padding-right:18px;margin:8px 0;line-height:1.9}
-#bar{display:flex;align-items:center;justify-content:space-between;width:var(--bs);margin:2px 0 4px;font-size:12px}
+details ul,details ol{padding-right:18px;margin:8px 0;line-height:1.9}
+#bar{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:space-between;width:var(--bs);margin:2px 0 4px;font-size:12px}
 #bar button{font:inherit;font-size:12px;color:#e2e8f0;background:#ffffff14;border:1px solid #ffffff22;border-radius:8px;padding:5px 9px;cursor:pointer;margin-right:4px}
 #bar b{letter-spacing:2px}
+#bar #xb{font-weight:700;font-size:14px;padding:7px 20px;border:0;color:#fff;margin-right:6px}
+#bar #xb.go{background:#16a34a;animation:bl 1s ease-in-out infinite}
+#bar #xb.ex{background:#dc2626;animation:none;transform:none}
+@keyframes bl{0%,100%{transform:scale(1);box-shadow:0 0 0 0 #22c55e00}50%{transform:scale(1.25);box-shadow:0 0 16px 5px #22c55e}}
+.lnk{background:none;border:0;color:#94a3b8;text-decoration:underline;font:inherit;font-size:12px;cursor:pointer;margin-bottom:6px}
 @media(max-width:480px){h1{font-size:18px;margin:2px 0}#msgs{height:110px}}
 </style></head><body>
 <h1>منچ آنلاین</h1>
@@ -89,6 +94,7 @@ details ul{padding-right:18px;margin:8px 0;line-height:1.9}
   <label class="lbl">ورود با کد بازی</label>
   <div class="two"><input id="rc" maxlength="8" placeholder="کد بازی"><button class="btn sec" style="width:auto" onclick="enter('join')">ورود</button></div>
   <div class="err" id="err"></div>
+  <details><summary>جدول برترین بازیکنان</summary><ol id="lb"><li>در حال دریافت...</li></ol></details>
   <details><summary>راهنما و قوانین</summary><ul>
     <li>هر بازی حداکثر چهار کاربر واقعی دارد و صندلی‌های خالی توسط ربات بازی می‌شود.</li>
     <li>برای خارج کردن مهره از پایگاه، عدد ۶ لازم است و آوردن ۶ یک نوبت اضافه می‌دهد.</li>
@@ -99,11 +105,13 @@ details ul{padding-right:18px;margin:8px 0;line-height:1.9}
 </div>
 
 <div id="game" hidden>
-  <div id="bar"><span>کد بازی: <b id="rcode"></b></span><span><button onclick="copyLink()">کپی لینک</button><button id="snd" onclick="toggleSnd()"></button><button onclick="leave()">خروج</button></span></div>
+  <div id="bar"><span>کد بازی: <b id="rcode"></b></span><span><button onclick="copyLink()">کپی لینک</button><button id="snd" onclick="toggleSnd()"></button><button id="rt" onclick="toggleRot()"></button><button id="xb" onclick="xclick()"></button></span></div>
   <div class="pl" id="pl"></div>
+  <div id="tm" class="st" style="min-height:0;font-size:12px;opacity:.8;margin:0"></div>
   <div id="st0" class="st"></div>
   <div id="board"><button id="dbtn" onclick="roll()"><div id="die"></div></button></div>
   <div id="st1" class="st"></div>
+  <button id="back" class="lnk" onclick="leave()" hidden>بازگشت به صفحه ورود</button>
   <div id="chat">
     <div id="msgs"></div>
     <div class="row">
@@ -203,7 +211,7 @@ function say(){
   const v=$('ci').value.trim(); if(!v) return;
   ws.send(JSON.stringify({t:'chat',text:v})); $('ci').value=''; upd();
 }
-let JP=null,room=null,myColor=+ls.get('color')||0,prevP=null,prevWin=false,mute=ls.get('mute')=='1',AC;
+let dlAt=0,wasMine=false,rot=ls.get('rot')!='0',JP=null,room=null,myColor=+ls.get('color')||0,prevP=null,prevWin=false,mute=ls.get('mute')=='1',AC;
 const ss={get:k=>{try{return sessionStorage.getItem(k)}catch{return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v)}catch{}},del:k=>{try{sessionStorage.removeItem(k)}catch{}}};
 function beep(f,d=.08,t=0){
   if(mute) return;
@@ -222,6 +230,19 @@ function copyLink(){
   (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('لینک بازی کپی شد.'),()=>toast('کد بازی: '+room));
 }
 function leave(){ ss.del('room'); JP=null; location.href=location.pathname; }
+function xclick(){ if(!S.started) ws.send(JSON.stringify({t:'start'})); else leave(); }
+function toggleRot(){ rot=!rot; ls.set('rot',rot?'1':'0'); extra(); }
+function extra(){
+  const ang=(3-me)*90;
+  $('board').style.transform=rot?'rotate('+ang+'deg)':''; $('dbtn').style.transform=rot?'rotate('+(-ang)+'deg)':'';
+  $('rt').textContent=rot?'چرخش: روشن':'چرخش: خاموش';
+  const x=$('xb'); x.className=S.started?'ex':'go'; x.textContent=S.started?'خروج':'شروع';
+  $('back').hidden=S.started;
+  const mt=S.started&&S.win<0&&S.turn==me;
+  if(mt&&!wasMine){ beep(660,.12); try{ navigator.vibrate&&navigator.vibrate(150); }catch{} }
+  wasMine=mt; document.title=(mt?'● نوبت شماست — ':'')+'منچ آنلاین';
+}
+setInterval(()=>{ if(!S) return; $('tm').textContent=dlAt&&S.started&&S.win<0 ? 'زمان باقی‌مانده نوبت: '+Math.max(0,Math.ceil((dlAt-Date.now())/1000))+' ثانیه' : ''; },500);
 function enter(mode){
   const n=$('nm').value.trim(), code=$('rc').value.trim().toUpperCase();
   if(!n){ $('err').textContent='لطفاً نام کاربری را وارد کنید.'; return; }
@@ -235,7 +256,7 @@ function connect(){
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
     if(m.err){ if(built){ leave(); return; } JP=null; ws.onclose=null; ws.close(); $('err').textContent=m.err; return; }
-    me=m.me; S=m.S; ls.set('w',S.stats[me][0]); ls.set('l',S.stats[me][1]);
+    me=m.me; S=m.S; ls.set('w',S.stats[me][0]); ls.set('l',S.stats[me][1]); dlAt=S.left?Date.now()+S.left*1000:0;
     room=m.room; JP={mode:'join',code:room,re:1}; ss.set('room',room); history.replaceState(null,'','?r='+room);
     if(!built){ $('lobby').hidden=true; $('game').hidden=false; build(); }
     if(m.note){ toast(m.note); if(m.die){ setFace(m.die); if(m.by!=me) animateRoll(); } }
@@ -262,18 +283,19 @@ function draw(){
   });
   for(let p=0;p<4;p++){
     const el=$('p'+p), sm=document.createElement('small');
-    el.textContent=S.names[p]+(me==p?' (شما)':''); el.style.borderColor=COL[p]+(S.turn==p&&S.win<0?'':'44');
+    el.textContent=S.names[p]+(me==p?' (شما)':''); el.style.borderColor=COL[p]+(S.started&&S.turn==p&&S.win<0?'':'44');
     sm.textContent=S.bots[p]?'ربات':'برد '+S.stats[p][0]+' · باخت '+S.stats[p][1]; el.append(sm);
-    el.classList.toggle('on',S.turn==p&&S.win<0);
+    el.classList.toggle('on',S.started&&S.turn==p&&S.win<0);
   }
   if(S.dice){ if(!prevDice&&S.turn!=me) animateRoll(); setFace(S.dice); }
   prevDice=S.dice;
-  const mine=S.turn==me&&!S.dice&&S.win<0;
+  const mine=S.started&&S.turn==me&&!S.dice&&S.win<0;
   $('dbtn').disabled=!mine; $('dbtn').classList.toggle('rdy',mine);
   const who=S.names[S.turn];
-  $('st0').textContent = S.win<0&&S.turn!=me ? (S.dice ? who+' عدد '+S.dice+' را آورد.' : 'نوبت «'+who+'» است.') : '';
-  $('st1').textContent = S.win<0&&S.turn==me ? (S.dice ? 'عدد '+S.dice+' آمد؛ یک مهره را انتخاب کنید.' : 'نوبت شماست؛ تاس را بیندازید.') : 'رنگ شما: '+CN[me];
+  $('st0').textContent = S.started&&S.win<0&&S.turn!=me ? (S.dice ? who+' عدد '+S.dice+' را آورد.' : 'نوبت «'+who+'» است.') : '';
+  $('st1').textContent = !S.started ? 'برای شروع بازی، دکمه سبز «شروع» را بزنید؛ پس از آن ربات‌ها به‌صورت خودکار تاس می‌اندازند.' : S.win<0&&S.turn==me ? (S.dice ? 'عدد '+S.dice+' آمد؛ یک مهره را انتخاب کنید.' : 'نوبت شماست؛ تاس را بیندازید.') : 'رنگ شما: '+CN[me];
   $('win').hidden=S.win<0;
+  extra();
   if(S.win>=0) $('wm').textContent = S.win==me ? 'شما برنده بازی شدید.' : S.names[S.win]+' برنده بازی شد.';
 }
 setInterval(()=>{ if(ws&&ws.readyState==1) ws.send('{"t":"ping"}'); },25000);
@@ -283,5 +305,6 @@ myName=ls.get('name')||''; $('nm').value=myName;
 $('ls').textContent='آمار شما: برد '+(+ls.get('w')||0)+' · باخت '+(+ls.get('l')||0);
 COL.forEach((c,i)=>{ const b=document.createElement('button'); b.className='sw'+(i==myColor?' sel':''); b.style.background=c; b.title=CN[i];
   b.onclick=()=>{ myColor=i; [...$('sws').children].forEach((x,j)=>x.classList.toggle('sel',j==i)); }; $('sws').append(b); });
+fetch('/lb').then(r=>r.json()).then(a=>{ const o=$('lb'); o.innerHTML=''; (a.length?a:[{n:'هنوز بازیکنی ثبت نشده است.'}]).forEach(e=>{ const li=document.createElement('li'); li.textContent=e.w!=null?e.n+' — برد '+e.w+' · باخت '+e.l:e.n; o.append(li); }); }).catch(()=>{});
 { const sr=ss.get('room'); if(myName&&sr){ JP={mode:'join',code:sr,re:1}; connect(); } else $('lobby').hidden=false; }
 </script></body></html>
